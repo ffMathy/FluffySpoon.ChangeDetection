@@ -98,9 +98,9 @@ namespace FluffySpoon.ChangeDetection.Tests
         public void HasChangedRecursively_DifferentShallowObjectStrings_ReturnsTrue()
         {
             Assert.IsTrue(ChangeDetector.HasChanges(new ComplexObject()
-                {
-                    StringValue = "foo"
-                },
+            {
+                StringValue = "foo"
+            },
                 new ComplexObject()
                 {
                     StringValue = "bar"
@@ -111,9 +111,9 @@ namespace FluffySpoon.ChangeDetection.Tests
         public void HasChangedRecursively_SameSameShallowObjectStrings_ReturnsFalse()
         {
             Assert.IsFalse(ChangeDetector.HasChanges(new ComplexObject()
-                {
-                    StringValue = "foo"
-                },
+            {
+                StringValue = "foo"
+            },
                 new ComplexObject()
                 {
                     StringValue = "foo"
@@ -183,7 +183,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
-        public void GetChangesRecursively_DifferentShallowObjects_ReturnsTrue()
+        public void GetChangesRecursively_DifferentShallowObjects_HasChange()
         {
             AssertHasChange(
                 new ComplexObject()
@@ -198,7 +198,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
-        public void GetChangesRecursively_SameSameShallowObjects_ReturnsFalse()
+        public void GetChangesRecursively_SameSameShallowObjects_HasNoChanges()
         {
             AssertHasNoChange(
                 new ComplexObject()
@@ -212,7 +212,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
-        public void GetChangesRecursively_DifferentShallowObjectStrings_ReturnsTrue()
+        public void GetChangesRecursively_DifferentShallowObjectStrings_HasChange()
         {
             AssertHasChange(
                 new ComplexObject()
@@ -222,13 +222,13 @@ namespace FluffySpoon.ChangeDetection.Tests
                 new ComplexObject()
                 {
                     StringValue = "bar"
-                }, 
+                },
                 x => x.StringValue,
                 new Change("StringValue", "foo", "bar"));
         }
 
         [TestMethod]
-        public void GetChangesRecursively_SameSameShallowObjectStrings_ReturnsFalse()
+        public void GetChangesRecursively_SameSameShallowObjectStrings_HasNoChanges()
         {
             AssertHasNoChange(
                 new ComplexObject()
@@ -238,12 +238,12 @@ namespace FluffySpoon.ChangeDetection.Tests
                 new ComplexObject()
                 {
                     StringValue = "foo"
-                }, 
+                },
                 x => x.StringValue);
         }
 
         [TestMethod]
-        public void GetChangesRecursively_DifferentDeepObjects_ReturnsTrue()
+        public void GetChangesRecursively_DifferentDeepObjects_HasChange()
         {
             AssertHasChange(
                 new DeepComplexObject()
@@ -264,7 +264,106 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
-        public void GetChangesRecursively_SameSameDeepObjects_ReturnsFalse()
+        public void GetChangesRecursively_DifferentDeepVeryDifferentObjects_HasProperChanges()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new ComplexObject()
+                    {
+                        StringValue = "foo",
+                        MyIntValue = 28,
+                        SubObject = new ComplexObject()
+                        {
+                            StringValue = "bar",
+                            MyIntValue = 123
+                        }
+                    },
+                    new ComplexObject()
+                    {
+                        StringValue = "fuz",
+                        MyIntValue = 1337,
+                        SubObject = new ComplexObject()
+                        {
+                            StringValue = "baz",
+                            MyIntValue = 123
+                        }
+                    })
+                .OrderBy(x => x.PropertyPath)
+                .ToArray();
+
+            Assert.AreEqual(3, changes.Length);
+
+            Assert.AreEqual(new Change("MyIntValue", 28, 1337), changes[0]);
+            Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
+            Assert.AreEqual(new Change("SubObject.StringValue", "bar", "baz"), changes[2]);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_NullSubObjectToComplexObject_HasProperChanges()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new ComplexObject()
+                    {
+                        StringValue = "foo",
+                        MyIntValue = 28,
+                        SubObject = null
+                    },
+                    new ComplexObject()
+                    {
+                        StringValue = "fuz",
+                        MyIntValue = 1337,
+                        SubObject = new ComplexObject()
+                        {
+                            StringValue = "baz",
+                            MyIntValue = 123
+                        }
+                    })
+                .OrderBy(x => x.PropertyPath)
+                .ToArray();
+
+            Assert.AreEqual(4, changes.Length);
+
+            Assert.AreEqual(new Change("MyIntValue", 28, 1337), changes[0]);
+            Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
+            Assert.AreEqual(new Change("SubObject.MyIntValue", null, 123), changes[2]);
+            Assert.AreEqual(new Change("SubObject.StringValue", null, "baz"), changes[3]);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_ComplexObjectToNullSubObject_HasProperChanges()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new ComplexObject()
+                    {
+                        StringValue = "foo",
+                        MyIntValue = 28,
+                        SubObject = new ComplexObject()
+                        {
+                            StringValue = "baz",
+                            MyIntValue = 123
+                        }
+                    },
+                    new ComplexObject()
+                    {
+                        StringValue = "fuz",
+                        MyIntValue = 1337,
+                        SubObject = null
+                    })
+                .OrderBy(x => x.PropertyPath)
+                .ToArray();
+
+            Assert.AreEqual(4, changes.Length);
+
+            Assert.AreEqual(new Change("MyIntValue", 28, 1337), changes[0]);
+            Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
+            Assert.AreEqual(new Change("SubObject.MyIntValue", 123, null), changes[2]);
+            Assert.AreEqual(new Change("SubObject.StringValue", "baz", null), changes[3]);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_SameSameDeepObjects_HasNoChanges()
         {
             AssertHasNoChange(
                 new DeepComplexObject()
@@ -284,7 +383,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
-        public void HasChangedRecursively_RecursiveObjects_ReturnsFalse()
+        public void HasChangesRecursively_RecursiveObjects_ReturnsFalse()
         {
             var recursiveObject1 = new RecursiveObject();
             recursiveObject1.Reference = recursiveObject1;
@@ -313,6 +412,11 @@ namespace FluffySpoon.ChangeDetection.Tests
             }
 
             public int MyIntValue
+            {
+                get; set;
+            }
+
+            public ComplexObject SubObject
             {
                 get; set;
             }

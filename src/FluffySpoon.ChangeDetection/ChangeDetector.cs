@@ -118,8 +118,11 @@ namespace FluffySpoon.ChangeDetection
                     if (seenObjectsA.Contains(objectPath.OldInstance) || seenObjectsB.Contains(objectPath.NewInstance))
                         continue;
 
-                    seenObjectsA.Add(objectPath.OldInstance);
-                    seenObjectsB.Add(objectPath.NewInstance);
+                    if(objectPath.OldInstance != null)
+                        seenObjectsA.Add(objectPath.OldInstance);
+
+                    if (objectPath.NewInstance != null)
+                        seenObjectsB.Add(objectPath.NewInstance);
 
                     EnqueueObjectPathQueues(
                         objectPathQueue,
@@ -147,8 +150,8 @@ namespace FluffySpoon.ChangeDetection
             {
                 objectPathQueue.Enqueue(new ObjectPath()
                 {
-                    OldInstance = property.GetValue(a),
-                    NewInstance = property.GetValue(b),
+                    OldInstance = a == null ? null : property.GetValue(a),
+                    NewInstance = b == null ? null : property.GetValue(b),
                     Properties = property.PropertyType.GetProperties(),
                     BasePropertyPath = !string.IsNullOrEmpty(basePropertyPath) ?
                         basePropertyPath + "." + property.Name :
