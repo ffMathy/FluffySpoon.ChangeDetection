@@ -1,3 +1,7 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Runtime.InteropServices.ComTypes;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -6,6 +10,40 @@ namespace FluffySpoon.ChangeDetection.Tests
     [TestClass]
     public class ChangeDetectorTest
     {
+        [DebuggerStepThrough]
+        private void AssertHasNoChange<T>(T oldObject, T newObject, Expression<Func<T, object>> expression)
+        {
+            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject, expression);
+            Assert.AreEqual(0, changes.ToArray().Length);
+        }
+
+        [DebuggerStepThrough]
+        private void AssertHasNoChange(object oldObject, object newObject)
+        {
+            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject);
+            Assert.AreEqual(0, changes.ToArray().Length);
+        }
+
+        [DebuggerStepThrough]
+        private void AssertHasChange(object oldObject, object newObject, Change expectedChange)
+        {
+            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject);
+            Assert.AreEqual(expectedChange, changes.SingleOrDefault());
+        }
+
+        [DebuggerStepThrough]
+        private void AssertHasChange<T>(T oldObject, T newObject, Expression<Func<T, object>> expression, Change expectedChange)
+        {
+            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject, expression);
+            Assert.AreEqual(expectedChange, changes.SingleOrDefault());
+        }
+
+        [DebuggerStepThrough]
+        private void AssertHasChange<T>(T oldObject, T newObject, Change expectedChange)
+        {
+            AssertHasChange<T>(oldObject, newObject, null, expectedChange);
+        }
+
         [TestMethod]
         public void HasChangedRecursively_DifferentStrings_ReturnsTrue()
         {
@@ -118,6 +156,131 @@ namespace FluffySpoon.ChangeDetection.Tests
                         StringValue = "foo"
                     }
                 }));
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_DifferentStrings_ReturnsTrue()
+        {
+            AssertHasChange("foo", "bar", new Change(string.Empty, "foo", "bar"));
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_SameStrings_ReturnsFalse()
+        {
+            AssertHasNoChange("foo", "foo");
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_NullAndString_ReturnsTrue()
+        {
+            AssertHasChange(null, "foo", new Change(string.Empty, null, "foo"));
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_Nulls_ReturnsFalse()
+        {
+            AssertHasNoChange(null, null);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_DifferentShallowObjects_ReturnsTrue()
+        {
+            AssertHasChange(
+                new ComplexObject()
+                {
+                    StringValue = "foo"
+                },
+                new ComplexObject()
+                {
+                    StringValue = "bar"
+                },
+                new Change("StringValue", "foo", "bar"));
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_SameSameShallowObjects_ReturnsFalse()
+        {
+            AssertHasNoChange(
+                new ComplexObject()
+                {
+                    StringValue = "foo"
+                },
+                new ComplexObject()
+                {
+                    StringValue = "foo"
+                });
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_DifferentShallowObjectStrings_ReturnsTrue()
+        {
+            AssertHasChange(
+                new ComplexObject()
+                {
+                    StringValue = "foo"
+                },
+                new ComplexObject()
+                {
+                    StringValue = "bar"
+                }, 
+                x => x.StringValue,
+                new Change("StringValue", "foo", "bar"));
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_SameSameShallowObjectStrings_ReturnsFalse()
+        {
+            AssertHasNoChange(
+                new ComplexObject()
+                {
+                    StringValue = "foo"
+                },
+                new ComplexObject()
+                {
+                    StringValue = "foo"
+                }, 
+                x => x.StringValue);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_DifferentDeepObjects_ReturnsTrue()
+        {
+            AssertHasChange(
+                new DeepComplexObject()
+                {
+                    ComplexObject = new ComplexObject()
+                    {
+                        StringValue = "foo"
+                    }
+                },
+                new DeepComplexObject()
+                {
+                    ComplexObject = new ComplexObject()
+                    {
+                        StringValue = "bar"
+                    }
+                },
+                new Change("ComplexObject.StringValue", "foo", "bar"));
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_SameSameDeepObjects_ReturnsFalse()
+        {
+            AssertHasNoChange(
+                new DeepComplexObject()
+                {
+                    ComplexObject = new ComplexObject()
+                    {
+                        StringValue = "foo"
+                    }
+                },
+                new DeepComplexObject()
+                {
+                    ComplexObject = new ComplexObject()
+                    {
+                        StringValue = "foo"
+                    }
+                });
         }
 
         [TestMethod]

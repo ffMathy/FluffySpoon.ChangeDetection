@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -7,31 +8,60 @@ namespace FluffySpoon.ChangeDetection
 {
     public class ChangeDetector
     {
-        public static bool HasChangedRecursively(object objectA, object objectB)
+        public static IEnumerable<Change> GetChangesRecursively(object oldObject, object newObject)
         {
-            using (var context = new ContextPair(objectA, objectB))
-                return HaveObjectsChangedRecursively(context);
+            using (var context = new ContextPair(oldObject, newObject))
+                return GetRecursiveChanges(context, null);
         }
 
-        public static bool HasChangedRecursively<T>(T objectA, T objectB, Expression<Func<T, object>> expression = null)
+        public static IEnumerable<Change> GetChangesRecursively<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
         {
-            var a = GetValueOfExpressionFor(objectA, expression);
-            var b = GetValueOfExpressionFor(objectB, expression);
+            var a = GetValueOfExpressionFor(oldObject, expression);
+            var b = GetValueOfExpressionFor(newObject, expression);
 
-            return HasChangedRecursively(a, b);
+            var propertyPath = PropertyPathHelper.GetPropertyPath(expression);
+
+            using (var context = new ContextPair(a, b))
+                return GetRecursiveChanges(context, propertyPath);
         }
 
-        private static bool HaveObjectsChangedRecursively(ContextPair contextPair)
+        public static bool HasChangedRecursively(object oldObject, object newObject)
+        {
+            return DoesEnumerableHaveContents(
+                GetChangesRecursively(oldObject, newObject));
+        }
+
+        public static bool HasChangedRecursively<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
+        {
+            return DoesEnumerableHaveContents(
+                GetChangesRecursively(oldObject, newObject, expression));
+        }
+
+        private static bool DoesEnumerableHaveContents(IEnumerable<Change> changes)
+        {
+            return changes.GetEnumerator().MoveNext();
+        }
+
+        private static IEnumerable<Change> GetRecursiveChanges(ContextPair contextPair, string basePropertyPath)
         {
             var a = contextPair.A.Instance;
             var b = contextPair.B.Instance;
 
             var type = GetTypeFromObjects(a, b);
             if (type == null)
-                return false;
+                return Array.Empty<Change>();
 
             if (IsSimpleType(type))
-                return HasChangedShallow(a, b);
+            {
+                var change = GetShallowChange(basePropertyPath, a, b);
+                if (change == Change.Empty)
+                    return Array.Empty<Change>();
+
+                return new[]
+                {
+                    change
+                };
+            }
 
             var seenObjectsA = contextPair.A.SeenObjects;
             var seenObjectsB = contextPair.B.SeenObjects;
@@ -40,45 +70,53 @@ namespace FluffySpoon.ChangeDetection
             seenObjectsB.Add(b);
 
             var objectPathQueue = new Queue<ObjectPath>();
-            EnqueueObjectPathQueues(objectPathQueue, a, b);
+            EnqueueObjectPathQueues(objectPathQueue, basePropertyPath, a, b);
+
+            var result = new HashSet<Change>();
 
             while (objectPathQueue.Count > 0)
             {
                 var objectPath = objectPathQueue.Dequeue();
 
                 var objectPathType = GetTypeFromObjects(
-                    objectPath.InstanceA,
-                    objectPath.InstanceB);
+                    objectPath.OldInstance,
+                    objectPath.NewInstance);
                 if (objectPathType == null)
                     continue;
 
                 if (IsSimpleType(objectPathType))
                 {
-                    var hasChangedShallow = HasChangedShallow(
-                        objectPath.InstanceA,
-                        objectPath.InstanceB);
-                    if (hasChangedShallow)
-                        return true;
+                    var shallowChange = GetShallowChange(
+                        objectPath.BasePropertyPath,
+                        objectPath.OldInstance,
+                        objectPath.NewInstance);
+                    if (shallowChange != Change.Empty)
+                        result.Add(shallowChange);
                 }
                 else
                 {
-                    if (seenObjectsA.Contains(objectPath.InstanceA) || seenObjectsB.Contains(objectPath.InstanceB))
+                    if (seenObjectsA.Contains(objectPath.OldInstance) || seenObjectsB.Contains(objectPath.NewInstance))
                         continue;
 
-                    seenObjectsA.Add(objectPath.InstanceA);
-                    seenObjectsB.Add(objectPath.InstanceB);
+                    seenObjectsA.Add(objectPath.OldInstance);
+                    seenObjectsB.Add(objectPath.NewInstance);
 
                     EnqueueObjectPathQueues(
                         objectPathQueue,
-                        objectPath.InstanceA,
-                        objectPath.InstanceB);
+                        objectPath.BasePropertyPath,
+                        objectPath.OldInstance,
+                        objectPath.NewInstance);
                 }
             }
 
-            return false;
+            return result;
         }
 
-        private static void EnqueueObjectPathQueues(Queue<ObjectPath> objectPathQueue, object a, object b)
+        private static void EnqueueObjectPathQueues(
+            Queue<ObjectPath> objectPathQueue,
+            string basePropertyPath,
+            object a,
+            object b)
         {
             var type = GetTypeFromObjects(a, b);
             if (type == null)
@@ -89,9 +127,12 @@ namespace FluffySpoon.ChangeDetection
             {
                 objectPathQueue.Enqueue(new ObjectPath()
                 {
-                    InstanceA = property.GetValue(a),
-                    InstanceB = property.GetValue(b),
-                    Properties = property.PropertyType.GetProperties()
+                    OldInstance = property.GetValue(a),
+                    NewInstance = property.GetValue(b),
+                    Properties = property.PropertyType.GetProperties(),
+                    BasePropertyPath = !string.IsNullOrEmpty(basePropertyPath) ?
+                        basePropertyPath + "." + property.Name :
+                        property.Name
                 });
             }
         }
@@ -102,18 +143,21 @@ namespace FluffySpoon.ChangeDetection
             return type;
         }
 
-        private static bool HasChangedShallow(object a, object b)
+        private static Change GetShallowChange(string parentPropertyPath, object oldValue, object newValue)
         {
-            if (a == null && b == null)
-                return true;
+            if (oldValue == null && newValue == null)
+                return Change.Empty;
 
-            if (a == null)
-                return true;
+            if (oldValue == null)
+                return new Change(parentPropertyPath, null, newValue);
 
-            if (b == null)
-                return true;
+            if (newValue == null)
+                return new Change(parentPropertyPath, oldValue, null);
 
-            return !a.Equals(b);
+            var hasChanged = !oldValue.Equals(newValue);
+            return hasChanged ?
+                new Change(parentPropertyPath, oldValue, newValue) :
+                Change.Empty;
         }
 
         private static bool IsSimpleType(Type type)
@@ -135,12 +179,12 @@ namespace FluffySpoon.ChangeDetection
         {
             public Context A
             {
-                get; 
+                get;
             }
 
             public Context B
             {
-                get; 
+                get;
             }
 
             public ContextPair(object a, object b)
@@ -160,7 +204,7 @@ namespace FluffySpoon.ChangeDetection
         {
             public object Instance
             {
-                get; set;
+                get;
             }
 
             public ICollection<object> SeenObjects
@@ -183,17 +227,22 @@ namespace FluffySpoon.ChangeDetection
 
         private class ObjectPath
         {
-            public object InstanceA
+            public object OldInstance
             {
                 get; set;
             }
 
-            public object InstanceB
+            public object NewInstance
             {
                 get; set;
             }
 
             public PropertyInfo[] Properties
+            {
+                get; set;
+            }
+
+            public string BasePropertyPath
             {
                 get; set;
             }
