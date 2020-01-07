@@ -41,7 +41,7 @@ public struct Change
 ```csharp
 ChangeDetector.GetChange("foo", "bar");
 
-/*
+/* returns:
 {
     PropertyPath: "",
     OldValue: "foo",
@@ -95,7 +95,7 @@ var b = new ComplexObject() {
 
 ChangeDetector.GetChanges(a, b);
 
-/*
+/* returns:
 [
     {
         PropertyPath: "MyIntValue",
@@ -133,7 +133,7 @@ var b = new ComplexObject() {
 
 ChangeDetector.GetChanges(a, b, x => x.SubObject);
 
-/*
+/* returns:
 [
     {
         PropertyPath: "StringValue",
@@ -166,7 +166,7 @@ var b = new ComplexObject() {
 
 ChangeDetector.GetChanges(a, b, x => x.MyIntValue);
 
-/*
+/* returns:
 [
     {
         PropertyPath: "MyIntValue",
