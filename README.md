@@ -177,3 +177,6 @@ ChangeDetector.GetChanges(a, b, x => x.MyIntValue);
 
 ## Checking if a change is present
 Instead of `GetChange` and `GetChanges`, you can use `HasChanges` to get a boolean indicating if any change has been detected or not.
+
+## Circular references won't break the comparison
+If circular references are detected, the given property that causes the circular dependency is not evaluated.
