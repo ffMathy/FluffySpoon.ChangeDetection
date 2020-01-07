@@ -44,9 +44,24 @@ namespace FluffySpoon.ChangeDetection
             NewValue = newValue;
         }
 
+        public bool Matches(string propertyPath)
+        {
+            return PropertyPath == propertyPath;
+        }
+
         public bool Matches<T>(Expression<Func<T, object>> expression)
         {
-            return PropertyPath == PropertyPathHelper.GetPropertyPath(expression);
+            return Matches(PropertyPathHelper.GetPropertyPath(expression));
+        }
+
+        public bool IsWithin(string propertyPath)
+        {
+            return PropertyPath.StartsWith(propertyPath);
+        }
+
+        public bool IsWithin<T>(Expression<Func<T, object>> expression)
+        {
+            return IsWithin(PropertyPathHelper.GetPropertyPath(expression));
         }
 
         public static bool operator ==(Change a, Change b)

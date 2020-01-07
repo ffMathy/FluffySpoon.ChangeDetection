@@ -1,3 +1,5 @@
+Allows you to compare what changes have been made between two values or objects.
+
 # Install the package
 `install-package FluffySpoon.ChangeDetection`
 

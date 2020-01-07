@@ -28,13 +28,13 @@ namespace FluffySpoon.ChangeDetection
             return GetChange(a, b);
         }
 
-        public static IEnumerable<Change> GetChanges(object oldObject, object newObject)
+        public static IChangeCollection GetChanges(object oldObject, object newObject)
         {
             using (var context = new ContextPair(oldObject, newObject))
                 return GetRecursiveChanges(context, null);
         }
 
-        public static IEnumerable<Change> GetChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
+        public static IChangeCollection GetChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
         {
             var a = GetValueOfExpressionFor(oldObject, expression);
             var b = GetValueOfExpressionFor(newObject, expression);
@@ -62,25 +62,25 @@ namespace FluffySpoon.ChangeDetection
             return changes.GetEnumerator().MoveNext();
         }
 
-        private static IEnumerable<Change> GetRecursiveChanges(ContextPair contextPair, string basePropertyPath)
+        private static IChangeCollection GetRecursiveChanges(ContextPair contextPair, string basePropertyPath)
         {
             var a = contextPair.A.Instance;
             var b = contextPair.B.Instance;
 
             var type = GetTypeFromObjects(a, b);
             if (type == null)
-                return Array.Empty<Change>();
+                return new ChangeCollection();
 
             if (IsSimpleType(type))
             {
                 var change = GetShallowChange(basePropertyPath, a, b);
                 if (change == Change.Empty)
-                    return Array.Empty<Change>();
+                    return new ChangeCollection();
 
-                return new[]
+                return new ChangeCollection(new[]
                 {
                     change
-                };
+                });
             }
 
             var seenObjectsA = contextPair.A.SeenObjects;
@@ -92,7 +92,7 @@ namespace FluffySpoon.ChangeDetection
             var objectPathQueue = new Queue<ObjectPath>();
             EnqueueObjectPathQueues(objectPathQueue, basePropertyPath, a, b);
 
-            var result = new HashSet<Change>();
+            var result = new ChangeCollection();
 
             while (objectPathQueue.Count > 0)
             {
