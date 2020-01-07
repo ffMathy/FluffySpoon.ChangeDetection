@@ -79,7 +79,7 @@ var a = new ComplexObject() {
     SubObject = new ComplexObject() {
         StringValue = "bar",
         MyIntValue = 123
-	}
+    }
 };
 
 var b = new ComplexObject() {
@@ -88,7 +88,7 @@ var b = new ComplexObject() {
     SubObject = new ComplexObject() {
         StringValue = "baz",
         MyIntValue = 123
-	}
+    }
 };
 
 ChangeDetector.GetChanges(a, b);
@@ -117,7 +117,7 @@ var a = new ComplexObject() {
     SubObject = new ComplexObject() {
         StringValue = "bar",
         MyIntValue = 123
-	}
+    }
 };
 
 var b = new ComplexObject() {
@@ -126,7 +126,7 @@ var b = new ComplexObject() {
     SubObject = new ComplexObject() {
         StringValue = "baz",
         MyIntValue = 123
-	}
+    }
 };
 
 ChangeDetector.GetChanges(a, b, x => x.SubObject);
@@ -150,7 +150,7 @@ var a = new ComplexObject() {
     SubObject = new ComplexObject() {
         StringValue = "bar",
         MyIntValue = 123
-	}
+    }
 };
 
 var b = new ComplexObject() {
@@ -159,7 +159,7 @@ var b = new ComplexObject() {
     SubObject = new ComplexObject() {
         StringValue = "baz",
         MyIntValue = 123
-	}
+    }
 };
 
 ChangeDetector.GetChanges(a, b, x => x.MyIntValue);
