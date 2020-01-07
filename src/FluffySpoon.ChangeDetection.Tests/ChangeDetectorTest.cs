@@ -57,6 +57,32 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
+        public void HasChangedRecursively_DifferentShallowObjectStrings_ReturnsTrue()
+        {
+            Assert.IsTrue(ChangeDetector.HasChangedRecursively(new ComplexObject()
+                {
+                    StringValue = "foo"
+                },
+                new ComplexObject()
+                {
+                    StringValue = "bar"
+                }, x => x.StringValue));
+        }
+
+        [TestMethod]
+        public void HasChangedRecursively_SameSameShallowObjectStrings_ReturnsFalse()
+        {
+            Assert.IsFalse(ChangeDetector.HasChangedRecursively(new ComplexObject()
+                {
+                    StringValue = "foo"
+                },
+                new ComplexObject()
+                {
+                    StringValue = "foo"
+                }, x => x.StringValue));
+        }
+
+        [TestMethod]
         public void HasChangedRecursively_DifferentDeepObjects_ReturnsTrue()
         {
             Assert.IsTrue(ChangeDetector.HasChangedRecursively(new DeepComplexObject()

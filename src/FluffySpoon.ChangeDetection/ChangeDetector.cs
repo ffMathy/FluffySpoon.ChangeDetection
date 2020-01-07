@@ -9,16 +9,8 @@ namespace FluffySpoon.ChangeDetection
     {
         public static bool HasChangedRecursively(object objectA, object objectB)
         {
-            using (var contextA = new Context() { Instance = objectA })
-            using (var contextB = new Context() { Instance = objectB })
-            {
-                var contextPair = new ContextPair()
-                {
-                    A = contextA,
-                    B = contextB
-                };
-                return HaveObjectsChangedRecursively(contextPair);
-            }
+            using (var context = new ContextPair(objectA, objectB))
+                return HaveObjectsChangedRecursively(context);
         }
 
         public static bool HasChangedRecursively<T>(T objectA, T objectB, Expression<Func<T, object>> expression = null)
@@ -90,7 +82,7 @@ namespace FluffySpoon.ChangeDetection
         {
             var type = GetTypeFromObjects(a, b);
             if (type == null)
-                return;
+                throw new InvalidOperationException("The type could not be determined.");
 
             var properties = type.GetProperties();
             foreach (var property in properties)
@@ -135,19 +127,32 @@ namespace FluffySpoon.ChangeDetection
             if (expression == null)
                 return obj;
 
-            return expression.Compile()(obj);
+            var compiledExpression = expression.Compile();
+            return compiledExpression(obj);
         }
 
-        private struct ContextPair
+        private class ContextPair : IDisposable
         {
             public Context A
             {
-                get; set;
+                get; 
             }
 
             public Context B
             {
-                get; set;
+                get; 
+            }
+
+            public ContextPair(object a, object b)
+            {
+                A = new Context(a);
+                B = new Context(b);
+            }
+
+            public void Dispose()
+            {
+                A.Dispose();
+                B.Dispose();
             }
         }
 
@@ -163,8 +168,10 @@ namespace FluffySpoon.ChangeDetection
                 get;
             }
 
-            public Context()
+            public Context(object instance)
             {
+                Instance = instance;
+
                 SeenObjects = new HashSet<object>();
             }
 
