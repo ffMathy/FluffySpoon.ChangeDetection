@@ -5,16 +5,27 @@ namespace FluffySpoon.ChangeDetection
 {
     public struct Change
     {
+        /// <summary>
+        /// The path of the property that changed.
+        /// <example><see cref="string.Empty"/> for simple values.</example>
+        /// <example>"MyComplexObject.MyComplexSubObject.MySimpleValue" when comparing two MyComplexObject instances.</example>
+        /// </summary>
         public string PropertyPath
         {
             get;
         }
 
+        /// <summary>
+        /// The old value.
+        /// </summary>
         public object OldValue
         {
             get; 
         }
 
+        /// <summary>
+        /// The new value.
+        /// </summary>
         public object NewValue
         {
             get;

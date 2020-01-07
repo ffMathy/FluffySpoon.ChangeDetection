@@ -8,13 +8,33 @@ namespace FluffySpoon.ChangeDetection
 {
     public class ChangeDetector
     {
-        public static IEnumerable<Change> GetChangesRecursively(object oldObject, object newObject)
+        public static Change GetChange(object oldObject, object newObject)
+        {
+            var type = GetTypeFromObjects(oldObject, newObject);
+            if (!IsSimpleType(type))
+            {
+                throw new InvalidOperationException(
+                    $"Can't detect simple changes from complex objects ({type.FullName}). {nameof(GetChange)} is made for simple types. Use {nameof(GetChanges)} instead.");
+            }
+
+            return GetChanges(oldObject, newObject).SingleOrDefault();
+        }
+
+        public static Change GetChange<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
+        {
+            var a = GetValueOfExpressionFor(oldObject, expression);
+            var b = GetValueOfExpressionFor(newObject, expression);
+
+            return GetChange(a, b);
+        }
+
+        public static IEnumerable<Change> GetChanges(object oldObject, object newObject)
         {
             using (var context = new ContextPair(oldObject, newObject))
                 return GetRecursiveChanges(context, null);
         }
 
-        public static IEnumerable<Change> GetChangesRecursively<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
+        public static IEnumerable<Change> GetChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
         {
             var a = GetValueOfExpressionFor(oldObject, expression);
             var b = GetValueOfExpressionFor(newObject, expression);
@@ -25,16 +45,16 @@ namespace FluffySpoon.ChangeDetection
                 return GetRecursiveChanges(context, propertyPath);
         }
 
-        public static bool HasChangedRecursively(object oldObject, object newObject)
+        public static bool HasChanges(object oldObject, object newObject)
         {
             return DoesEnumerableHaveContents(
-                GetChangesRecursively(oldObject, newObject));
+                GetChanges(oldObject, newObject));
         }
 
-        public static bool HasChangedRecursively<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
+        public static bool HasChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
         {
             return DoesEnumerableHaveContents(
-                GetChangesRecursively(oldObject, newObject, expression));
+                GetChanges(oldObject, newObject, expression));
         }
 
         private static bool DoesEnumerableHaveContents(IEnumerable<Change> changes)

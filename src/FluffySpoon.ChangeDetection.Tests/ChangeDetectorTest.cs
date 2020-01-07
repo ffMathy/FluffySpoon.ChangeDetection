@@ -13,28 +13,28 @@ namespace FluffySpoon.ChangeDetection.Tests
         [DebuggerStepThrough]
         private void AssertHasNoChange<T>(T oldObject, T newObject, Expression<Func<T, object>> expression)
         {
-            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject, expression);
+            var changes = ChangeDetector.GetChanges(oldObject, newObject, expression);
             Assert.AreEqual(0, changes.ToArray().Length);
         }
 
         [DebuggerStepThrough]
         private void AssertHasNoChange(object oldObject, object newObject)
         {
-            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject);
+            var changes = ChangeDetector.GetChanges(oldObject, newObject);
             Assert.AreEqual(0, changes.ToArray().Length);
         }
 
         [DebuggerStepThrough]
         private void AssertHasChange(object oldObject, object newObject, Change expectedChange)
         {
-            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject);
+            var changes = ChangeDetector.GetChanges(oldObject, newObject);
             Assert.AreEqual(expectedChange, changes.SingleOrDefault());
         }
 
         [DebuggerStepThrough]
         private void AssertHasChange<T>(T oldObject, T newObject, Expression<Func<T, object>> expression, Change expectedChange)
         {
-            var changes = ChangeDetector.GetChangesRecursively(oldObject, newObject, expression);
+            var changes = ChangeDetector.GetChanges(oldObject, newObject, expression);
             Assert.AreEqual(expectedChange, changes.SingleOrDefault());
         }
 
@@ -47,31 +47,31 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void HasChangedRecursively_DifferentStrings_ReturnsTrue()
         {
-            Assert.IsTrue(ChangeDetector.HasChangedRecursively("foo", "bar"));
+            Assert.IsTrue(ChangeDetector.HasChanges("foo", "bar"));
         }
 
         [TestMethod]
         public void HasChangedRecursively_SameStrings_ReturnsFalse()
         {
-            Assert.IsFalse(ChangeDetector.HasChangedRecursively("foo", "foo"));
+            Assert.IsFalse(ChangeDetector.HasChanges("foo", "foo"));
         }
 
         [TestMethod]
         public void HasChangedRecursively_NullAndString_ReturnsTrue()
         {
-            Assert.IsTrue(ChangeDetector.HasChangedRecursively(null, "foo"));
+            Assert.IsTrue(ChangeDetector.HasChanges(null, "foo"));
         }
 
         [TestMethod]
         public void HasChangedRecursively_Nulls_ReturnsFalse()
         {
-            Assert.IsFalse(ChangeDetector.HasChangedRecursively(null, null));
+            Assert.IsFalse(ChangeDetector.HasChanges(null, null));
         }
 
         [TestMethod]
         public void HasChangedRecursively_DifferentShallowObjects_ReturnsTrue()
         {
-            Assert.IsTrue(ChangeDetector.HasChangedRecursively(new ComplexObject()
+            Assert.IsTrue(ChangeDetector.HasChanges(new ComplexObject()
             {
                 StringValue = "foo"
             },
@@ -84,7 +84,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void HasChangedRecursively_SameSameShallowObjects_ReturnsFalse()
         {
-            Assert.IsFalse(ChangeDetector.HasChangedRecursively(new ComplexObject()
+            Assert.IsFalse(ChangeDetector.HasChanges(new ComplexObject()
             {
                 StringValue = "foo"
             },
@@ -97,7 +97,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void HasChangedRecursively_DifferentShallowObjectStrings_ReturnsTrue()
         {
-            Assert.IsTrue(ChangeDetector.HasChangedRecursively(new ComplexObject()
+            Assert.IsTrue(ChangeDetector.HasChanges(new ComplexObject()
                 {
                     StringValue = "foo"
                 },
@@ -110,7 +110,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void HasChangedRecursively_SameSameShallowObjectStrings_ReturnsFalse()
         {
-            Assert.IsFalse(ChangeDetector.HasChangedRecursively(new ComplexObject()
+            Assert.IsFalse(ChangeDetector.HasChanges(new ComplexObject()
                 {
                     StringValue = "foo"
                 },
@@ -123,7 +123,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void HasChangedRecursively_DifferentDeepObjects_ReturnsTrue()
         {
-            Assert.IsTrue(ChangeDetector.HasChangedRecursively(new DeepComplexObject()
+            Assert.IsTrue(ChangeDetector.HasChanges(new DeepComplexObject()
             {
                 ComplexObject = new ComplexObject()
                 {
@@ -142,7 +142,7 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void HasChangedRecursively_SameSameDeepObjects_ReturnsFalse()
         {
-            Assert.IsFalse(ChangeDetector.HasChangedRecursively(new DeepComplexObject()
+            Assert.IsFalse(ChangeDetector.HasChanges(new DeepComplexObject()
             {
                 ComplexObject = new ComplexObject()
                 {
@@ -292,7 +292,7 @@ namespace FluffySpoon.ChangeDetection.Tests
             var recursiveObject2 = new RecursiveObject();
             recursiveObject2.Reference = recursiveObject2;
 
-            Assert.IsFalse(ChangeDetector.HasChangedRecursively(
+            Assert.IsFalse(ChangeDetector.HasChanges(
                 recursiveObject1,
                 recursiveObject2));
         }
@@ -308,6 +308,11 @@ namespace FluffySpoon.ChangeDetection.Tests
         private class ComplexObject
         {
             public string StringValue
+            {
+                get; set;
+            }
+
+            public int MyIntValue
             {
                 get; set;
             }
