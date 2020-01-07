@@ -1,10 +1,10 @@
 Allows you to compare what changes have been made between two values or objects.
 
-# Install the package
+# Install the package from NuGet
 `install-package FluffySpoon.ChangeDetection`
 
 # Usage
-Each `Change` returned looks like this:
+In the examples below, the changes are of type `Change` which looks like this:
 
 ```csharp
 public struct Change
