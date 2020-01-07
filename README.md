@@ -72,7 +72,7 @@ class ComplexObject
 ```
 
 ### Example: Comparing object with sub-object
-```
+```csharp
 var a = new ComplexObject() {
     StringValue = "foo",
     MyIntValue = 28,
@@ -110,7 +110,7 @@ ChangeDetector.GetChanges(a, b);
 ```
 
 ### Example: Comparing specific complex object property (SubObject)
-```
+```csharp
 var a = new ComplexObject() {
     StringValue = "foo",
     MyIntValue = 28,
@@ -143,7 +143,7 @@ ChangeDetector.GetChanges(a, b, x => x.SubObject);
 ```
 
 ### Example: Comparing specific simple value on object (MyIntValue)
-```
+```csharp
 var a = new ComplexObject() {
     StringValue = "foo",
     MyIntValue = 28,
