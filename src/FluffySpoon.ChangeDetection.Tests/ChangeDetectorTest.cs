@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -345,12 +346,13 @@ namespace FluffySpoon.ChangeDetection.Tests
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
-            Assert.AreEqual(4, changes.Length);
+            Assert.AreEqual(5, changes.Length);
 
             Assert.AreEqual(new Change("MyIntValue", 28, 1337), changes[0]);
             Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
             Assert.AreEqual(new Change("SubObject.MyIntValue", null, 123), changes[2]);
-            Assert.AreEqual(new Change("SubObject.StringValue", null, "baz"), changes[3]);
+            Assert.AreEqual(new Change("SubObject.StringsHashSet.0", null, "foo"), changes[3]);
+            Assert.AreEqual(new Change("SubObject.StringValue", null, "baz"), changes[4]);
         }
 
         [TestMethod]
@@ -377,12 +379,13 @@ namespace FluffySpoon.ChangeDetection.Tests
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
-            Assert.AreEqual(4, changes.Length);
+            Assert.AreEqual(5, changes.Length);
 
             Assert.AreEqual(new Change("MyIntValue", 28, 1337), changes[0]);
             Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
             Assert.AreEqual(new Change("SubObject.MyIntValue", 123, null), changes[2]);
-            Assert.AreEqual(new Change("SubObject.StringValue", "baz", null), changes[3]);
+            Assert.AreEqual(new Change("SubObject.StringsHashSet.0", "foo", null), changes[3]);
+            Assert.AreEqual(new Change("SubObject.StringValue", "baz", null), changes[4]);
         }
 
         [TestMethod]
@@ -392,6 +395,38 @@ namespace FluffySpoon.ChangeDetection.Tests
                 .GetChanges(
                     new [] { "foo", "bar", "baz", "fuz" },
                     new [] { "foo", "lol", "hi", "fuz" })
+                .OrderBy(x => x.PropertyPath)
+                .ToArray();
+
+            Assert.AreEqual(2, changes.Length);
+
+            Assert.AreEqual(new Change("1", "bar", "lol"), changes[0]);
+            Assert.AreEqual(new Change("2", "baz", "hi"), changes[1]);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_StringList_HasProperChanges()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new List<string>() { "foo", "bar", "baz", "fuz" },
+                    new List<string>() { "foo", "lol", "hi", "fuz" })
+                .OrderBy(x => x.PropertyPath)
+                .ToArray();
+
+            Assert.AreEqual(2, changes.Length);
+
+            Assert.AreEqual(new Change("1", "bar", "lol"), changes[0]);
+            Assert.AreEqual(new Change("2", "baz", "hi"), changes[1]);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_StringHashSet_HasProperChanges()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new HashSet<string>(new [] { "foo", "bar", "baz", "fuz" }),
+                    new HashSet<string>(new [] { "foo", "lol", "hi", "fuz" }))
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
@@ -455,9 +490,16 @@ namespace FluffySpoon.ChangeDetection.Tests
                 get; set;
             }
 
+            public HashSet<string> StringsHashSet { get; }
+
             public ComplexObject SubObject
             {
                 get; set;
+            }
+
+            public ComplexObject()
+            {
+                StringsHashSet = new HashSet<string>(new [] {"foo"});
             }
         }
 

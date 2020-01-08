@@ -112,7 +112,16 @@ namespace FluffySpoon.ChangeDetection
 
         private static bool IsEnumerableType(Type objectPathType)
         {
-            return typeof(IEnumerable<object>).IsAssignableFrom(objectPathType);
+            var isAssignableToEnumerable = typeof(IEnumerable<object>).IsAssignableFrom(objectPathType);
+            if (isAssignableToEnumerable)
+                return true;
+
+            var interfaces = objectPathType.GetInterfaces();
+            if (interfaces == null)
+                return false;
+
+            var genericInterfaces = interfaces.Where(x => x.IsGenericType);
+            return genericInterfaces.Any(genericInterfaceType => genericInterfaceType.GetGenericTypeDefinition() == typeof(IEnumerable<>));
         }
 
         private static void ScanForChanges(ContextPair contextPair, ObjectPath objectPath, ChangeCollection result)
@@ -134,8 +143,8 @@ namespace FluffySpoon.ChangeDetection
                 var itemsOld = (IEnumerable<object>)objectPath.OldInstance;
                 var itemsNew = (IEnumerable<object>)objectPath.NewInstance;
 
-                var itemsOldArray = itemsOld.ToArray();
-                var itemsNewArray = itemsNew.ToArray();
+                var itemsOldArray = itemsOld?.ToArray() ?? Array.Empty<object>();
+                var itemsNewArray = itemsNew?.ToArray() ?? Array.Empty<object>();
 
                 var maxCount = Math.Max(itemsOldArray.Length, itemsNewArray.Length);
 
@@ -147,8 +156,8 @@ namespace FluffySpoon.ChangeDetection
 
                 for (var i = 0; i < maxCount; i++)
                 {
-                    var itemOldInstance = itemsOldArray[i];
-                    var itemNewInstance = itemsNewArray[i];
+                    var itemOldInstance = newItemsOldArray[i];
+                    var itemNewInstance = newItemsNewArray[i];
 
                     var itemType = GetTypeFromObjects(itemOldInstance, itemNewInstance);
                     if (itemType == null)
