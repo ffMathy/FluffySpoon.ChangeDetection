@@ -147,6 +147,22 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
+        public void HasChangedRecursively_SameArrays_ReturnsFalse()
+        {
+            Assert.IsFalse(ChangeDetector.HasChanges(
+                new [] { "foo" },
+                new [] { "foo" }));
+        }
+
+        [TestMethod]
+        public void HasChangedRecursively_DifferentArrays_ReturnsTrue()
+        {
+            Assert.IsTrue(ChangeDetector.HasChanges(
+                new [] { "foo" },
+                new [] { "bar" }));
+        }
+
+        [TestMethod]
         public void HasChangedRecursively_SameSameDeepObjects_ReturnsFalse()
         {
             Assert.IsFalse(ChangeDetector.HasChanges(new DeepComplexObject()
@@ -367,6 +383,22 @@ namespace FluffySpoon.ChangeDetection.Tests
             Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
             Assert.AreEqual(new Change("SubObject.MyIntValue", 123, null), changes[2]);
             Assert.AreEqual(new Change("SubObject.StringValue", "baz", null), changes[3]);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_StringArray_HasProperChanges()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new [] { "foo", "bar", "baz", "fuz" },
+                    new [] { "foo", "lol", "hi", "fuz" })
+                .OrderBy(x => x.PropertyPath)
+                .ToArray();
+
+            Assert.AreEqual(2, changes.Length);
+
+            Assert.AreEqual(new Change("1", "bar", "lol"), changes[0]);
+            Assert.AreEqual(new Change("2", "baz", "hi"), changes[1]);
         }
 
         [TestMethod]
