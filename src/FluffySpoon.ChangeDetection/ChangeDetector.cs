@@ -32,10 +32,10 @@ namespace FluffySpoon.ChangeDetection
         public static IChangeCollection GetChanges(object oldObject, object newObject)
         {
             using (var context = new ContextPair(oldObject, newObject))
-                return GetRecursiveChanges(context, null);
+                return GetRecursiveChanges<ChangeCollection>(context, null);
         }
 
-        public static IChangeCollection GetChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
+        public static IChangeCollection<T> GetChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
         {
             var a = GetValueOfExpressionFor(oldObject, expression);
             var b = GetValueOfExpressionFor(newObject, expression);
@@ -43,7 +43,7 @@ namespace FluffySpoon.ChangeDetection
             var propertyPath = PropertyPathHelper.GetPropertyPath(expression);
 
             using (var context = new ContextPair(a, b))
-                return GetRecursiveChanges(context, propertyPath);
+                return GetRecursiveChanges<ChangeCollection<T>>(context, propertyPath);
         }
 
         public static bool HasChanges(object oldObject, object newObject)
@@ -63,28 +63,28 @@ namespace FluffySpoon.ChangeDetection
             return changes.GetEnumerator().MoveNext();
         }
 
-        private static IChangeCollection GetRecursiveChanges(ContextPair contextPair, string basePropertyPath)
+        private static TCollection GetRecursiveChanges<TCollection>(ContextPair contextPair, string basePropertyPath) where TCollection : ChangeCollection, new()
         {
             var oldInstance = contextPair.OldInstanceContext.Instance;
             var newInstance = contextPair.NewInstanceContext.Instance;
 
             var type = GetTypeFromObjects(oldInstance, newInstance);
             if (type == null)
-                return new ChangeCollection();
+                return new TCollection();
 
             if (IsSimpleType(type))
             {
                 var change = GetShallowChange(basePropertyPath, oldInstance, newInstance);
                 if (change == Change.Empty)
-                    return new ChangeCollection();
+                    return new TCollection();
 
-                return new ChangeCollection(new[]
-                {
-                    change
-                });
+                var collection = new TCollection();
+                collection.Add(change);
+
+                return collection;
             }
 
-            var result = new ChangeCollection();
+            var result = new TCollection();
 
             ScanForChanges(contextPair, new ObjectPath()
             {
