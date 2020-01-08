@@ -186,7 +186,8 @@ namespace FluffySpoon.ChangeDetection
         private static bool IsSimpleType(Type type)
         {
             return type.IsPrimitive ||
-                type == typeof(string);
+                   type.IsValueType ||
+                   type == typeof(string);
         }
 
         private static object GetValueOfExpressionFor<T>(T obj, Expression<Func<T, object>> expression = null)

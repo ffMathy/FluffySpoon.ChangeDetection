@@ -45,6 +45,13 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
+        public void HasChangedRecursively_SameDates_ReturnsFalse()
+        {
+            var time = DateTime.Now;
+            Assert.IsFalse(ChangeDetector.HasChanges(time, time));
+        }
+
+        [TestMethod]
         public void HasChangedRecursively_DifferentStrings_ReturnsTrue()
         {
             Assert.IsTrue(ChangeDetector.HasChanges("foo", "bar"));
