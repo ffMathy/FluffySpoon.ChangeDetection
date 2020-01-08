@@ -206,15 +206,22 @@ namespace FluffySpoon.ChangeDetection
             var properties = type.GetProperties();
             foreach (var property in properties)
             {
-                objectPathQueue.Enqueue(new ObjectPath()
+                try
                 {
-                    OldInstance = oldInstance == null ? null : property.GetValue(oldInstance),
-                    NewInstance = newInstance == null ? null : property.GetValue(newInstance),
-                    Properties = property.PropertyType.GetProperties(),
-                    BasePropertyPath = AddToPropertyPath(
-                        objectPath.BasePropertyPath,
-                        property.Name)
-                });
+                    objectPathQueue.Enqueue(new ObjectPath()
+                    {
+                        OldInstance = oldInstance == null ? null : property.GetValue(oldInstance),
+                        NewInstance = newInstance == null ? null : property.GetValue(newInstance),
+                        Properties = property.PropertyType.GetProperties(),
+                        BasePropertyPath = AddToPropertyPath(
+                            objectPath.BasePropertyPath,
+                            property.Name)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"An error occured while comparing {AddToPropertyPath(objectPath.BasePropertyPath, property.Name)}.", ex);
+                }
             }
         }
 
