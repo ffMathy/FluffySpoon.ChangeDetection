@@ -140,11 +140,42 @@ namespace FluffySpoon.ChangeDetection
             }
             else if (IsEnumerableType(pathType))
             {
-                var itemsOld = (IEnumerable<object>)objectPath.OldInstance;
-                var itemsNew = (IEnumerable<object>)objectPath.NewInstance;
+                Array itemsOldArray;
+                Array itemsNewArray;
 
-                var itemsOldArray = itemsOld?.ToArray() ?? Array.Empty<object>();
-                var itemsNewArray = itemsNew?.ToArray() ?? Array.Empty<object>();
+                if (pathType.IsArray)
+                {
+                    itemsOldArray = (Array) objectPath.OldInstance;
+                    itemsNewArray = (Array) objectPath.NewInstance;
+                }
+                else
+                {
+                    var genericType = pathType
+                        .GetGenericArguments()
+                        .Single();
+
+                    var toArrayMethod = typeof(Enumerable)
+                        .GetMethods()
+                        .Single(x =>
+                            x.Name == nameof(Enumerable.ToArray) &&
+                            x.IsGenericMethod)
+                        .MakeGenericMethod(genericType);
+
+                    var emptyMethod = typeof(Array)
+                        .GetMethods()
+                        .Single(x =>
+                            x.Name == nameof(Array.Empty) &&
+                            x.IsGenericMethod)
+                        .MakeGenericMethod(genericType);
+
+                    itemsOldArray = objectPath.OldInstance == null
+                        ? (Array) emptyMethod.Invoke(null, Array.Empty<object>())
+                        : (Array) toArrayMethod.Invoke(null, new[] {objectPath.OldInstance});
+
+                    itemsNewArray = objectPath.NewInstance == null
+                        ? (Array) emptyMethod.Invoke(null, Array.Empty<object>())
+                        : (Array) toArrayMethod.Invoke(null, new[] {objectPath.NewInstance});
+                }
 
                 var maxCount = Math.Max(itemsOldArray.Length, itemsNewArray.Length);
 

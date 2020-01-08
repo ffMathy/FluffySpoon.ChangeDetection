@@ -492,6 +492,9 @@ namespace FluffySpoon.ChangeDetection.Tests
 
             public HashSet<string> StringsHashSet { get; }
 
+            public HashSet<SimpleEnum> EnumHashSet { get; }
+            public HashSet<SimpleStruct> StructHashSet { get; }
+
             public ComplexObject SubObject
             {
                 get; set;
@@ -500,6 +503,8 @@ namespace FluffySpoon.ChangeDetection.Tests
             public ComplexObject()
             {
                 StringsHashSet = new HashSet<string>(new [] {"foo"});
+                EnumHashSet = new HashSet<SimpleEnum>();
+                StructHashSet = new HashSet<SimpleStruct>();
             }
         }
 
@@ -514,6 +519,15 @@ namespace FluffySpoon.ChangeDetection.Tests
             {
                 get; set;
             }
+        }
+
+        private enum SimpleEnum
+        {
+        }
+
+        private struct SimpleStruct
+        {
+            
         }
     }
 }
