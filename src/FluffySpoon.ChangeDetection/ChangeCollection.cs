@@ -71,15 +71,5 @@ namespace FluffySpoon.ChangeDetection
         {
             return _changes.Any(x => x.Matches(propertyPath));
         }
-
-        public bool HasChangeWithin<T>(Expression<Func<T, object>> expression)
-        {
-            return _changes.Any(x => x.IsWithin(expression));
-        }
-
-        public bool HasChangeWithin(string propertyPath)
-        {
-            return _changes.Any(x => x.IsWithin(propertyPath));
-        }
     }
 }
