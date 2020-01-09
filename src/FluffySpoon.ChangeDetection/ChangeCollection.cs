@@ -7,17 +7,30 @@ using System.Text;
 
 namespace FluffySpoon.ChangeDetection
 {
+    class ChangeCollection<T> : ChangeCollection, IChangeCollection<T>
+    {
+        public bool HasChangeFor(Expression<Func<T, object>> expression)
+        {
+            return Changes.Any(x => x.Matches(expression));
+        }
+
+        public bool HasChangeWithin(Expression<Func<T, object>> expression)
+        {
+            return Changes.Any(x => x.IsWithin(expression));
+        }
+    }
+
     class ChangeCollection : IChangeCollection, ICollection<Change>
     {
-        private readonly HashSet<Change> _changes;
+        protected readonly HashSet<Change> Changes;
 
-        public int Count => _changes.Count;
+        public int Count => Changes.Count;
 
         public bool IsReadOnly => false;
 
         public ChangeCollection()
         {
-            _changes = new HashSet<Change>();
+            Changes = new HashSet<Change>();
         }
 
         public ChangeCollection(
@@ -29,7 +42,7 @@ namespace FluffySpoon.ChangeDetection
 
         public IEnumerator<Change> GetEnumerator()
         {
-            return _changes.GetEnumerator();
+            return Changes.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -39,37 +52,32 @@ namespace FluffySpoon.ChangeDetection
 
         public void Add(Change item)
         {
-            _changes.Add(item);
+            Changes.Add(item);
         }
 
         public void Clear()
         {
-            _changes.Clear();
+            Changes.Clear();
         }
 
         public bool Contains(Change item)
         {
-            return _changes.Contains(item);
+            return Changes.Contains(item);
         }
 
         public void CopyTo(Change[] array, int arrayIndex)
         {
-            _changes.CopyTo(array, arrayIndex);
+            Changes.CopyTo(array, arrayIndex);
         }
 
         public bool Remove(Change item)
         {
-            return _changes.Remove(item);
-        }
-
-        public bool HasChangeFor<T>(Expression<Func<T, object>> expression)
-        {
-            return _changes.Any(x => x.Matches(expression));
+            return Changes.Remove(item);
         }
 
         public bool HasChangeFor(string propertyPath)
         {
-            return _changes.Any(x => x.Matches(propertyPath));
+            return Changes.Any(x => x.Matches(propertyPath));
         }
     }
 }

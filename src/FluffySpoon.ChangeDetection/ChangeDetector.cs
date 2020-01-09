@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -31,10 +32,10 @@ namespace FluffySpoon.ChangeDetection
         public static IChangeCollection GetChanges(object oldObject, object newObject)
         {
             using (var context = new ContextPair(oldObject, newObject))
-                return GetRecursiveChanges(context, null);
+                return GetRecursiveChanges<ChangeCollection>(context, null);
         }
 
-        public static IChangeCollection GetChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
+        public static IChangeCollection<T> GetChanges<T>(T oldObject, T newObject, Expression<Func<T, object>> expression = null)
         {
             var a = GetValueOfExpressionFor(oldObject, expression);
             var b = GetValueOfExpressionFor(newObject, expression);
@@ -42,7 +43,7 @@ namespace FluffySpoon.ChangeDetection
             var propertyPath = PropertyPathHelper.GetPropertyPath(expression);
 
             using (var context = new ContextPair(a, b))
-                return GetRecursiveChanges(context, propertyPath);
+                return GetRecursiveChanges<ChangeCollection<T>>(context, propertyPath);
         }
 
         public static bool HasChanges(object oldObject, object newObject)
@@ -62,38 +63,37 @@ namespace FluffySpoon.ChangeDetection
             return changes.GetEnumerator().MoveNext();
         }
 
-        private static IChangeCollection GetRecursiveChanges(ContextPair contextPair, string basePropertyPath)
+        private static TCollection GetRecursiveChanges<TCollection>(ContextPair contextPair, string basePropertyPath) where TCollection : ChangeCollection, new()
         {
-            var a = contextPair.A.Instance;
-            var b = contextPair.B.Instance;
+            var oldInstance = contextPair.OldInstanceContext.Instance;
+            var newInstance = contextPair.NewInstanceContext.Instance;
 
-            var type = GetTypeFromObjects(a, b);
+            var type = GetTypeFromObjects(oldInstance, newInstance);
             if (type == null)
-                return new ChangeCollection();
+                return new TCollection();
 
             if (IsSimpleType(type))
             {
-                var change = GetShallowChange(basePropertyPath, a, b);
+                var change = GetShallowChange(basePropertyPath, oldInstance, newInstance);
                 if (change == Change.Empty)
-                    return new ChangeCollection();
+                    return new TCollection();
 
-                return new ChangeCollection(new[]
-                {
-                    change
-                });
+                var collection = new TCollection();
+                collection.Add(change);
+
+                return collection;
             }
 
-            var seenObjectsA = contextPair.A.SeenObjects;
-            var seenObjectsB = contextPair.B.SeenObjects;
+            var result = new TCollection();
 
-            seenObjectsA.Add(a);
-            seenObjectsB.Add(b);
+            ScanForChanges(contextPair, new ObjectPath()
+            {
+                OldInstance = oldInstance,
+                NewInstance = newInstance,
+                BasePropertyPath = null
+            }, result);
 
-            var objectPathQueue = new Queue<ObjectPath>();
-            EnqueueObjectPathQueues(objectPathQueue, basePropertyPath, a, b);
-
-            var result = new ChangeCollection();
-
+            var objectPathQueue = contextPair.ObjectPathQueue;
             while (objectPathQueue.Count > 0)
             {
                 var objectPath = objectPathQueue.Dequeue();
@@ -104,60 +104,172 @@ namespace FluffySpoon.ChangeDetection
                 if (objectPathType == null)
                     continue;
 
-                if (IsSimpleType(objectPathType))
-                {
-                    var shallowChange = GetShallowChange(
-                        objectPath.BasePropertyPath,
-                        objectPath.OldInstance,
-                        objectPath.NewInstance);
-                    if (shallowChange != Change.Empty)
-                        result.Add(shallowChange);
-                }
-                else
-                {
-                    if (seenObjectsA.Contains(objectPath.OldInstance) || seenObjectsB.Contains(objectPath.NewInstance))
-                        continue;
-
-                    if(objectPath.OldInstance != null)
-                        seenObjectsA.Add(objectPath.OldInstance);
-
-                    if (objectPath.NewInstance != null)
-                        seenObjectsB.Add(objectPath.NewInstance);
-
-                    EnqueueObjectPathQueues(
-                        objectPathQueue,
-                        objectPath.BasePropertyPath,
-                        objectPath.OldInstance,
-                        objectPath.NewInstance);
-                }
+                ScanForChanges(contextPair, objectPath, result);
             }
 
             return result;
         }
 
-        private static void EnqueueObjectPathQueues(
-            Queue<ObjectPath> objectPathQueue,
-            string basePropertyPath,
-            object a,
-            object b)
+        private static bool IsEnumerableType(Type objectPathType)
         {
-            var type = GetTypeFromObjects(a, b);
+            var isAssignableToEnumerable = typeof(IEnumerable<object>).IsAssignableFrom(objectPathType);
+            if (isAssignableToEnumerable)
+                return true;
+
+            var interfaces = objectPathType.GetInterfaces();
+            if (interfaces == null)
+                return false;
+
+            var genericInterfaces = interfaces.Where(x => x.IsGenericType);
+            return genericInterfaces.Any(genericInterfaceType => genericInterfaceType.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+        }
+
+        private static void ScanForChanges(ContextPair contextPair, ObjectPath objectPath, ChangeCollection result)
+        {
+            var pathType = GetTypeFromObjects(
+                objectPath.OldInstance,
+                objectPath.NewInstance);
+            if (IsSimpleType(pathType))
+            {
+                var shallowChange = GetShallowChange(
+                    objectPath.BasePropertyPath,
+                    objectPath.OldInstance,
+                    objectPath.NewInstance);
+                if (shallowChange != Change.Empty)
+                    result.Add(shallowChange);
+            }
+            else if (IsEnumerableType(pathType))
+            {
+                Array itemsOldArray;
+                Array itemsNewArray;
+
+                if (pathType.IsArray)
+                {
+                    itemsOldArray = (Array) objectPath.OldInstance;
+                    itemsNewArray = (Array) objectPath.NewInstance;
+                }
+                else
+                {
+                    var genericType = pathType
+                        .GetGenericArguments()
+                        .Single();
+
+                    var toArrayMethod = typeof(Enumerable)
+                        .GetMethods()
+                        .Single(x =>
+                            x.Name == nameof(Enumerable.ToArray) &&
+                            x.IsGenericMethod)
+                        .MakeGenericMethod(genericType);
+
+                    var emptyMethod = typeof(Array)
+                        .GetMethods()
+                        .Single(x =>
+                            x.Name == nameof(Array.Empty) &&
+                            x.IsGenericMethod)
+                        .MakeGenericMethod(genericType);
+
+                    itemsOldArray = objectPath.OldInstance == null
+                        ? (Array) emptyMethod.Invoke(null, Array.Empty<object>())
+                        : (Array) toArrayMethod.Invoke(null, new[] {objectPath.OldInstance});
+
+                    itemsNewArray = objectPath.NewInstance == null
+                        ? (Array) emptyMethod.Invoke(null, Array.Empty<object>())
+                        : (Array) toArrayMethod.Invoke(null, new[] {objectPath.NewInstance});
+                }
+
+                var maxCount = Math.Max(itemsOldArray.Length, itemsNewArray.Length);
+
+                var newItemsOldArray = new object[maxCount];
+                var newItemsNewArray = new object[maxCount];
+
+                Array.Copy(itemsOldArray, newItemsOldArray, itemsOldArray.Length);
+                Array.Copy(itemsNewArray, newItemsNewArray, itemsNewArray.Length);
+
+                for (var i = 0; i < maxCount; i++)
+                {
+                    var itemOldInstance = newItemsOldArray[i];
+                    var itemNewInstance = newItemsNewArray[i];
+
+                    var itemType = GetTypeFromObjects(itemOldInstance, itemNewInstance);
+                    if (itemType == null)
+                        continue;
+
+                    var arrayItemObjectPath = new ObjectPath()
+                    {
+                        BasePropertyPath = AddToPropertyPath(
+                            objectPath.BasePropertyPath,
+                            i.ToString()),
+                        OldInstance = itemOldInstance,
+                        NewInstance = itemNewInstance,
+                        Properties = itemType.GetProperties()
+                    };
+
+                    contextPair.ObjectPathQueue.Enqueue(arrayItemObjectPath);
+                }
+            }
+            else
+            {
+                EnqueueObjectPathQueues(
+                    contextPair,
+                    objectPath);
+            }
+        }
+
+        private static void EnqueueObjectPathQueues(
+            ContextPair contextPair,
+            ObjectPath objectPath)
+        {
+            var oldInstance = objectPath.OldInstance;
+            var newInstance = objectPath.NewInstance;
+
+            var type = GetTypeFromObjects(oldInstance, newInstance);
             if (type == null)
                 throw new InvalidOperationException("The type could not be determined.");
+
+            if (IsSimpleType(type))
+                throw new InvalidOperationException("This method can't be called with simple types.");
+
+            var seenObjectsOld = contextPair.OldInstanceContext.SeenObjects;
+            var seenObjectsNew = contextPair.NewInstanceContext.SeenObjects;
+
+            if (seenObjectsOld.Contains(objectPath.OldInstance) || seenObjectsNew.Contains(objectPath.NewInstance))
+                return;
+
+            if (objectPath.OldInstance != null)
+                seenObjectsOld.Add(objectPath.OldInstance);
+
+            if (objectPath.NewInstance != null)
+                seenObjectsNew.Add(objectPath.NewInstance);
+
+            var objectPathQueue = contextPair.ObjectPathQueue;
 
             var properties = type.GetProperties();
             foreach (var property in properties)
             {
-                objectPathQueue.Enqueue(new ObjectPath()
+                try
                 {
-                    OldInstance = a == null ? null : property.GetValue(a),
-                    NewInstance = b == null ? null : property.GetValue(b),
-                    Properties = property.PropertyType.GetProperties(),
-                    BasePropertyPath = !string.IsNullOrEmpty(basePropertyPath) ?
-                        basePropertyPath + "." + property.Name :
-                        property.Name
-                });
+                    objectPathQueue.Enqueue(new ObjectPath()
+                    {
+                        OldInstance = oldInstance == null ? null : property.GetValue(oldInstance),
+                        NewInstance = newInstance == null ? null : property.GetValue(newInstance),
+                        Properties = property.PropertyType.GetProperties(),
+                        BasePropertyPath = AddToPropertyPath(
+                            objectPath.BasePropertyPath,
+                            property.Name)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"An error occured while comparing {AddToPropertyPath(objectPath.BasePropertyPath, property.Name)}.", ex);
+                }
             }
+        }
+
+        private static string AddToPropertyPath(string basePropertyPath, string propertyName)
+        {
+            return !string.IsNullOrEmpty(basePropertyPath) ?
+                basePropertyPath + "." + propertyName :
+                propertyName;
         }
 
         private static Type GetTypeFromObjects(object a, object b)
@@ -186,7 +298,8 @@ namespace FluffySpoon.ChangeDetection
         private static bool IsSimpleType(Type type)
         {
             return type.IsPrimitive ||
-                type == typeof(string);
+                   type.IsValueType ||
+                   type == typeof(string);
         }
 
         private static object GetValueOfExpressionFor<T>(T obj, Expression<Func<T, object>> expression = null)
@@ -200,26 +313,33 @@ namespace FluffySpoon.ChangeDetection
 
         private class ContextPair : IDisposable
         {
-            public Context A
+            public Context OldInstanceContext
             {
                 get;
             }
 
-            public Context B
+            public Context NewInstanceContext
+            {
+                get;
+            }
+
+            public Queue<ObjectPath> ObjectPathQueue
             {
                 get;
             }
 
             public ContextPair(object a, object b)
             {
-                A = new Context(a);
-                B = new Context(b);
+                OldInstanceContext = new Context(a);
+                NewInstanceContext = new Context(b);
+
+                ObjectPathQueue = new Queue<ObjectPath>();
             }
 
             public void Dispose()
             {
-                A.Dispose();
-                B.Dispose();
+                OldInstanceContext.Dispose();
+                NewInstanceContext.Dispose();
             }
         }
 
