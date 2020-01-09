@@ -13,11 +13,6 @@ namespace FluffySpoon.ChangeDetection
         {
             return Changes.Any(x => x.Matches(expression));
         }
-
-        public bool HasChangeWithin(Expression<Func<T, object>> expression)
-        {
-            return Changes.Any(x => x.IsWithin(expression));
-        }
     }
 
     class ChangeCollection : IChangeCollection, ICollection<Change>
