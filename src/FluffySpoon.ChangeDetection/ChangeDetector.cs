@@ -151,6 +151,8 @@ namespace FluffySpoon.ChangeDetection
                 else
                 {
                     var genericType = pathType
+                        .GetInterfaces()
+                        .Single(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IEnumerable<>))
                         .GetGenericArguments()
                         .Single();
 
