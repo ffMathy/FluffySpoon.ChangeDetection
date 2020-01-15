@@ -117,8 +117,6 @@ namespace FluffySpoon.ChangeDetection
                 return true;
 
             var interfaces = objectPathType.GetInterfaces();
-            if (interfaces == null)
-                return false;
 
             var genericInterfaces = interfaces.Where(x => x.IsGenericType);
             return genericInterfaces.Any(genericInterfaceType => genericInterfaceType.GetGenericTypeDefinition() == typeof(IEnumerable<>));
@@ -136,7 +134,11 @@ namespace FluffySpoon.ChangeDetection
                     objectPath.OldInstance,
                     objectPath.NewInstance);
                 if (shallowChange != Change.Empty)
+                {
                     result.Add(shallowChange);
+                    if (objectPath.ContainerChange != Change.Empty)
+                        result.Add(objectPath.ContainerChange);
+                }
             }
             else if (IsEnumerableType(pathType))
             {
@@ -145,8 +147,8 @@ namespace FluffySpoon.ChangeDetection
 
                 if (pathType.IsArray)
                 {
-                    itemsOldArray = (Array) objectPath.OldInstance;
-                    itemsNewArray = (Array) objectPath.NewInstance;
+                    itemsOldArray = (Array)objectPath.OldInstance;
+                    itemsNewArray = (Array)objectPath.NewInstance;
                 }
                 else
                 {
@@ -171,12 +173,12 @@ namespace FluffySpoon.ChangeDetection
                         .MakeGenericMethod(genericType);
 
                     itemsOldArray = objectPath.OldInstance == null
-                        ? (Array) emptyMethod.Invoke(null, Array.Empty<object>())
-                        : (Array) toArrayMethod.Invoke(null, new[] {objectPath.OldInstance});
+                        ? (Array)emptyMethod.Invoke(null, Array.Empty<object>())
+                        : (Array)toArrayMethod.Invoke(null, new[] { objectPath.OldInstance });
 
                     itemsNewArray = objectPath.NewInstance == null
-                        ? (Array) emptyMethod.Invoke(null, Array.Empty<object>())
-                        : (Array) toArrayMethod.Invoke(null, new[] {objectPath.NewInstance});
+                        ? (Array)emptyMethod.Invoke(null, Array.Empty<object>())
+                        : (Array)toArrayMethod.Invoke(null, new[] { objectPath.NewInstance });
                 }
 
                 var maxCount = Math.Max(itemsOldArray.Length, itemsNewArray.Length);
@@ -186,6 +188,11 @@ namespace FluffySpoon.ChangeDetection
 
                 Array.Copy(itemsOldArray, newItemsOldArray, itemsOldArray.Length);
                 Array.Copy(itemsNewArray, newItemsNewArray, itemsNewArray.Length);
+
+                var shallowChange = GetShallowChange(
+                    objectPath.BasePropertyPath ?? string.Empty,
+                    objectPath.OldInstance,
+                    objectPath.NewInstance);
 
                 for (var i = 0; i < maxCount; i++)
                 {
@@ -203,7 +210,8 @@ namespace FluffySpoon.ChangeDetection
                             i.ToString()),
                         OldInstance = itemOldInstance,
                         NewInstance = itemNewInstance,
-                        Properties = itemType.GetProperties()
+                        Properties = itemType.GetProperties(),
+                        ContainerChange = shallowChange
                     };
 
                     contextPair.ObjectPathQueue.Enqueue(arrayItemObjectPath);
@@ -378,6 +386,11 @@ namespace FluffySpoon.ChangeDetection
             }
 
             public object NewInstance
+            {
+                get; set;
+            }
+
+            public Change ContainerChange
             {
                 get; set;
             }

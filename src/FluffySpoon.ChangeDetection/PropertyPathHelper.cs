@@ -14,7 +14,9 @@ namespace FluffySpoon.ChangeDetection
             var visitor = new PropertyPathExpressionVisitor();
             visitor.Visit(expression);
 
-            return string.Join(".", visitor.Path.Select(p => p.Name));
+            return string.Join(".", visitor.Path
+                .Reverse()
+                .Select(p => p.Name));
         }
     }
 }

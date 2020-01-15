@@ -31,13 +31,9 @@ namespace FluffySpoon.ChangeDetection
             get;
         }
 
-        public static readonly Change Empty;
+        public static readonly Change Empty = new Change();
 
-        public Change(string propertyPath) : this(propertyPath, null, null)
-        {
-        }
-
-        public Change(string propertyPath, object oldValue, object newValue)
+        public Change(string propertyPath, object oldValue = null, object newValue = null)
         {
             PropertyPath = propertyPath;
             OldValue = oldValue;
@@ -46,7 +42,7 @@ namespace FluffySpoon.ChangeDetection
 
         public bool Matches(string propertyPath)
         {
-            return PropertyPath == propertyPath || PropertyPath.StartsWith(propertyPath + ".");
+            return PropertyPath == propertyPath;
         }
 
         public bool Matches<T>(Expression<Func<T, object>> expression)
@@ -62,6 +58,35 @@ namespace FluffySpoon.ChangeDetection
         public static bool operator !=(Change a, Change b)
         {
             return !a.Equals(b);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if(!(obj is Change change))
+                return false;
+
+            if (OldValue == null)
+                return change.OldValue == null;
+
+            if (NewValue == null)
+                return change.NewValue == null;
+
+            return
+                PropertyPath == change.PropertyPath &&
+                OldValue.Equals(change.OldValue) &&
+                NewValue.Equals(change.NewValue);
+        }
+
+        public bool Equals(Change other)
+        {
+            return PropertyPath == other.PropertyPath && 
+                   Equals(OldValue, other.OldValue) && 
+                   Equals(NewValue, other.NewValue);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(PropertyPath, OldValue, NewValue);
         }
 
         public override string ToString()

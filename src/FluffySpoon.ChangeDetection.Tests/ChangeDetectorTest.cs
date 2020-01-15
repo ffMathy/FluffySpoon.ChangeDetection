@@ -325,115 +325,141 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void GetChangesRecursively_NullSubObjectToComplexObject_HasProperChanges()
         {
+            var oldObject = new ComplexObject()
+            {
+                StringValue = "foo",
+                MyIntValue = 28,
+                SubObject = null
+            };
+
+            var newObject = new ComplexObject()
+            {
+                StringValue = "fuz",
+                MyIntValue = 1337,
+                SubObject = new ComplexObject()
+                {
+                    StringValue = "baz",
+                    MyIntValue = 123
+                }
+            };
+
             var changes = ChangeDetector
                 .GetChanges(
-                    new ComplexObject()
-                    {
-                        StringValue = "foo",
-                        MyIntValue = 28,
-                        SubObject = null
-                    },
-                    new ComplexObject()
-                    {
-                        StringValue = "fuz",
-                        MyIntValue = 1337,
-                        SubObject = new ComplexObject()
-                        {
-                            StringValue = "baz",
-                            MyIntValue = 123
-                        }
-                    })
+                    oldObject,
+                    newObject)
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
-            Assert.AreEqual(5, changes.Length);
+            Assert.AreEqual(6, changes.Length);
 
             Assert.AreEqual(new Change("MyIntValue", 28, 1337), changes[0]);
             Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
             Assert.AreEqual(new Change("SubObject.MyIntValue", null, 123), changes[2]);
-            Assert.AreEqual(new Change("SubObject.StringsHashSet.0", null, "foo"), changes[3]);
-            Assert.AreEqual(new Change("SubObject.StringValue", null, "baz"), changes[4]);
+            Assert.AreEqual(new Change("SubObject.StringsHashSet", null, newObject.SubObject.StringsHashSet), changes[3]);
+            Assert.AreEqual(new Change("SubObject.StringsHashSet.0", null, "foo"), changes[4]);
+            Assert.AreEqual(new Change("SubObject.StringValue", null, "baz"), changes[5]);
         }
 
         [TestMethod]
         public void GetChangesRecursively_ComplexObjectToNullSubObject_HasProperChanges()
         {
-            var changes = ChangeDetector
+            var oldObject = new ComplexObject()
+            {
+                StringValue = "foo",
+                MyIntValue = 28,
+                SubObject = new ComplexObject()
+                {
+                    StringValue = "baz",
+                    MyIntValue = 123
+                }
+            };
+
+            var newObject = new ComplexObject()
+            {
+                StringValue = "fuz",
+                MyIntValue = 1337,
+                SubObject = null
+            };
+
+            var changeCollection = ChangeDetector
                 .GetChanges(
-                    new ComplexObject()
-                    {
-                        StringValue = "foo",
-                        MyIntValue = 28,
-                        SubObject = new ComplexObject()
-                        {
-                            StringValue = "baz",
-                            MyIntValue = 123
-                        }
-                    },
-                    new ComplexObject()
-                    {
-                        StringValue = "fuz",
-                        MyIntValue = 1337,
-                        SubObject = null
-                    })
+                    oldObject,
+                    newObject);
+
+            var changes = changeCollection
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
-            Assert.AreEqual(5, changes.Length);
+            Assert.AreEqual(6, changes.Length);
 
             Assert.AreEqual(new Change("MyIntValue", 28, 1337), changes[0]);
             Assert.AreEqual(new Change("StringValue", "foo", "fuz"), changes[1]);
             Assert.AreEqual(new Change("SubObject.MyIntValue", 123, null), changes[2]);
-            Assert.AreEqual(new Change("SubObject.StringsHashSet.0", "foo", null), changes[3]);
-            Assert.AreEqual(new Change("SubObject.StringValue", "baz", null), changes[4]);
+            Assert.AreEqual(new Change("SubObject.StringsHashSet", oldObject.SubObject.StringsHashSet, null), changes[3]);
+            Assert.AreEqual(new Change("SubObject.StringsHashSet.0", "foo", null), changes[4]);
+            Assert.AreEqual(new Change("SubObject.StringValue", "baz", null), changes[5]);
+
+            Assert.IsTrue(changeCollection.HasChangeFor(x => x.SubObject.StringsHashSet));
         }
 
         [TestMethod]
         public void GetChangesRecursively_StringArray_HasProperChanges()
         {
+            var oldObject = new [] { "foo", "bar", "baz", "fuz" };
+            var newObject = new [] { "foo", "lol", "hi", "fuz" };
+
             var changes = ChangeDetector
                 .GetChanges(
-                    new [] { "foo", "bar", "baz", "fuz" },
-                    new [] { "foo", "lol", "hi", "fuz" })
+                    oldObject,
+                    newObject)
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
-            Assert.AreEqual(2, changes.Length);
-
-            Assert.AreEqual(new Change("1", "bar", "lol"), changes[0]);
-            Assert.AreEqual(new Change("2", "baz", "hi"), changes[1]);
+            Assert.AreEqual(3, changes.Length);
+            
+            Assert.AreEqual(new Change("", oldObject, newObject), changes[0]);
+            Assert.AreEqual(new Change("1", "bar", "lol"), changes[1]);
+            Assert.AreEqual(new Change("2", "baz", "hi"), changes[2]);
         }
 
         [TestMethod]
         public void GetChangesRecursively_StringList_HasProperChanges()
         {
+            var oldObject = new List<string>() { "foo", "bar", "baz", "fuz" };
+            var newObject = new List<string>() { "foo", "lol", "hi", "fuz" };
+
             var changes = ChangeDetector
                 .GetChanges(
-                    new List<string>() { "foo", "bar", "baz", "fuz" },
-                    new List<string>() { "foo", "lol", "hi", "fuz" })
+                    oldObject,
+                    newObject)
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
-            Assert.AreEqual(2, changes.Length);
-
-            Assert.AreEqual(new Change("1", "bar", "lol"), changes[0]);
-            Assert.AreEqual(new Change("2", "baz", "hi"), changes[1]);
+            Assert.AreEqual(3, changes.Length);
+            
+            Assert.AreEqual(new Change("", oldObject, newObject), changes[0]);
+            Assert.AreEqual(new Change("1", "bar", "lol"), changes[1]);
+            Assert.AreEqual(new Change("2", "baz", "hi"), changes[2]);
         }
 
         [TestMethod]
         public void GetChangesRecursively_StringHashSet_HasProperChanges()
         {
+            var oldObject = new HashSet<string>(new [] { "foo", "bar", "baz", "fuz" });
+            var newObject = new HashSet<string>(new [] { "foo", "lol", "hi", "fuz" });
+
             var changes = ChangeDetector
                 .GetChanges(
-                    new HashSet<string>(new [] { "foo", "bar", "baz", "fuz" }),
-                    new HashSet<string>(new [] { "foo", "lol", "hi", "fuz" }))
+                    oldObject,
+                    newObject)
                 .OrderBy(x => x.PropertyPath)
                 .ToArray();
 
-            Assert.AreEqual(2, changes.Length);
-
-            Assert.AreEqual(new Change("1", "bar", "lol"), changes[0]);
-            Assert.AreEqual(new Change("2", "baz", "hi"), changes[1]);
+            Assert.AreEqual(3, changes.Length);
+            
+            Assert.AreEqual(new Change("", oldObject, newObject), changes[0]);
+            Assert.AreEqual(new Change("1", "bar", "lol"), changes[1]);
+            Assert.AreEqual(new Change("2", "baz", "hi"), changes[2]);
         }
 
         [TestMethod]
