@@ -48,8 +48,17 @@ namespace FluffySpoon.ChangeDetection.Tests
         [TestMethod]
         public void HasChangedRecursively_SameDates_ReturnsFalse()
         {
-            var time = DateTime.Now;
-            Assert.IsFalse(ChangeDetector.HasChanges(time, time));
+            Assert.IsFalse(ChangeDetector.HasChanges(
+                new DateTime(2000, 1, 1), 
+                new DateTime(2000, 1, 1)));
+        }
+
+        [TestMethod]
+        public void HasChangedRecursively_DifferentDates_ReturnsTrue()
+        {
+            Assert.IsTrue(ChangeDetector.HasChanges(
+                new DateTime(2000, 1, 2), 
+                new DateTime(2000, 1, 1)));
         }
 
         [TestMethod]
@@ -264,6 +273,34 @@ namespace FluffySpoon.ChangeDetection.Tests
                     StringValue = "foo"
                 },
                 x => x.StringValue);
+        }
+
+        [TestMethod]
+        public void GetChangesRecursively_DifferentSubObjectCollectionsInDeepObjects_HasChange()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new DeepComplexObject()
+                    {
+                        ComplexObject = new ComplexObject()
+                        {
+                            SubObjects = new List<ComplexObject>()
+                        }
+                    },
+                    new DeepComplexObject()
+                    {
+                        ComplexObject = new ComplexObject()
+                        {
+                            SubObjects = new List<ComplexObject>()
+                            {
+                                new ComplexObject()
+                            }
+                        }
+                    });
+
+            Assert.AreEqual(4, changes.Count);
+
+            Assert.IsTrue(changes.HasChangeFor(x => x.ComplexObject.SubObjects));
         }
 
         [TestMethod]
@@ -523,6 +560,8 @@ namespace FluffySpoon.ChangeDetection.Tests
 
             public Dictionary<string, string> StringsDictionary { get; set; }
 
+            public List<ComplexObject> SubObjects { get; set; }
+
             public ComplexObject SubObject
             {
                 get; set;
@@ -534,6 +573,7 @@ namespace FluffySpoon.ChangeDetection.Tests
                 EnumHashSet = new HashSet<SimpleEnum>();
                 StructHashSet = new HashSet<SimpleStruct>();
                 StringsDictionary = new Dictionary<string, string>();
+                SubObjects = new List<ComplexObject>();
             }
         }
 

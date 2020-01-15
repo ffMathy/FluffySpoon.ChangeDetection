@@ -136,8 +136,13 @@ namespace FluffySpoon.ChangeDetection
                 if (shallowChange != Change.Empty)
                 {
                     result.Add(shallowChange);
-                    if (objectPath.ContainerChange != Change.Empty)
-                        result.Add(objectPath.ContainerChange);
+                    if (objectPath.ParentChanges != null)
+                    {
+                        foreach (var parentChange in objectPath.ParentChanges)
+                        {
+                            result.Add(parentChange);
+                        }
+                    }
                 }
             }
             else if (IsEnumerableType(pathType))
@@ -189,10 +194,22 @@ namespace FluffySpoon.ChangeDetection
                 Array.Copy(itemsOldArray, newItemsOldArray, itemsOldArray.Length);
                 Array.Copy(itemsNewArray, newItemsNewArray, itemsNewArray.Length);
 
-                var shallowChange = GetShallowChange(
+                var shallowChange = new Change(
                     objectPath.BasePropertyPath ?? string.Empty,
                     objectPath.OldInstance,
                     objectPath.NewInstance);
+                var newParentChanges = new[]
+                {
+                    shallowChange
+                };
+
+                var parentChanges = objectPath.ParentChanges == null ?
+                    newParentChanges : 
+                    objectPath
+                        .ParentChanges
+                        .Union(newParentChanges)
+                        .Distinct()
+                        .ToArray();
 
                 for (var i = 0; i < maxCount; i++)
                 {
@@ -211,7 +228,7 @@ namespace FluffySpoon.ChangeDetection
                         OldInstance = itemOldInstance,
                         NewInstance = itemNewInstance,
                         Properties = itemType.GetProperties(),
-                        ContainerChange = shallowChange
+                        ParentChanges = parentChanges
                     };
 
                     contextPair.ObjectPathQueue.Enqueue(arrayItemObjectPath);
@@ -265,7 +282,8 @@ namespace FluffySpoon.ChangeDetection
                         Properties = property.PropertyType.GetProperties(),
                         BasePropertyPath = AddToPropertyPath(
                             objectPath.BasePropertyPath,
-                            property.Name)
+                            property.Name),
+                        ParentChanges = objectPath.ParentChanges
                     });
                 }
                 catch (Exception ex)
@@ -390,7 +408,7 @@ namespace FluffySpoon.ChangeDetection
                 get; set;
             }
 
-            public Change ContainerChange
+            public Change[] ParentChanges
             {
                 get; set;
             }
