@@ -46,7 +46,7 @@ namespace FluffySpoon.ChangeDetection
 
         public bool Matches(string propertyPath)
         {
-            return PropertyPath == propertyPath;
+            return PropertyPath == propertyPath || PropertyPath.StartsWith(propertyPath + ".");
         }
 
         public bool Matches<T>(Expression<Func<T, object>> expression)
