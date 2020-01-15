@@ -77,16 +77,22 @@ namespace FluffySpoon.ChangeDetection
                 NewValue.Equals(change.NewValue);
         }
 
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = (PropertyPath != null ? PropertyPath.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (OldValue != null ? OldValue.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (NewValue != null ? NewValue.GetHashCode() : 0);
+                return hashCode;
+            }
+        }
+
         public bool Equals(Change other)
         {
             return PropertyPath == other.PropertyPath && 
                    Equals(OldValue, other.OldValue) && 
                    Equals(NewValue, other.NewValue);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(PropertyPath, OldValue, NewValue);
         }
 
         public override string ToString()
