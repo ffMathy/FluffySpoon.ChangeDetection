@@ -6,7 +6,7 @@ namespace FluffySpoon.ChangeDetection
 {
     internal static class PropertyPathHelper
     {
-        public static string GetPropertyPath<T>(Expression<Func<T, object>> expression)
+        public static string GetPropertyPath<T>(Expression<Func<T, object>>? expression)
         {
             if (expression == null)
                 return string.Empty;

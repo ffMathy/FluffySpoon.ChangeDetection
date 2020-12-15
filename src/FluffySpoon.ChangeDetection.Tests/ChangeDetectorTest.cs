@@ -304,6 +304,32 @@ namespace FluffySpoon.ChangeDetection.Tests
         }
 
         [TestMethod]
+        public void GetChangesRecursively_SubObjectNullDifferences_HasChange()
+        {
+            var changes = ChangeDetector
+                .GetChanges(
+                    new DeepComplexObject()
+                    {
+                        ComplexObject = new ComplexObject()
+                        {
+                            EnumHashSet = null
+                        }
+                    },
+                    new DeepComplexObject()
+                    {
+                        ComplexObject = new ComplexObject()
+                        {
+                            EnumHashSet = new HashSet<SimpleEnum>()
+                            {
+                                SimpleEnum.Foo
+                            }
+                        }
+                    });
+
+            Assert.AreEqual(2, changes.Count);
+        }
+
+        [TestMethod]
         public void GetChangesRecursively_DifferentDeepObjects_HasChange()
         {
             AssertHasChange(
@@ -555,12 +581,14 @@ namespace FluffySpoon.ChangeDetection.Tests
 
             public HashSet<string> StringsHashSet { get; }
 
-            public HashSet<SimpleEnum> EnumHashSet { get; }
+            public HashSet<SimpleEnum> EnumHashSet { get; set; }
             public HashSet<SimpleStruct> StructHashSet { get; }
 
             public Dictionary<string, string> StringsDictionary { get; set; }
 
             public List<ComplexObject> SubObjects { get; set; }
+
+            public List<ComplexObject> NullSubObjects { get; set; }
 
             public ComplexObject SubObject
             {
@@ -574,6 +602,8 @@ namespace FluffySpoon.ChangeDetection.Tests
                 StructHashSet = new HashSet<SimpleStruct>();
                 StringsDictionary = new Dictionary<string, string>();
                 SubObjects = new List<ComplexObject>();
+                
+                NullSubObjects = new List<ComplexObject>();
             }
         }
 
@@ -592,6 +622,8 @@ namespace FluffySpoon.ChangeDetection.Tests
 
         private enum SimpleEnum
         {
+            Foo,
+            Bar
         }
 
         private struct SimpleStruct

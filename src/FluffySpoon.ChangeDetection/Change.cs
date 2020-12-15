@@ -10,7 +10,7 @@ namespace FluffySpoon.ChangeDetection
         /// <example><see cref="string.Empty"/> for simple values.</example>
         /// <example>"MyComplexObject.MyComplexSubObject.MySimpleValue" when comparing two MyComplexObject instances.</example>
         /// </summary>
-        public string PropertyPath
+        public string? PropertyPath
         {
             get;
         }
@@ -18,7 +18,7 @@ namespace FluffySpoon.ChangeDetection
         /// <summary>
         /// The old value.
         /// </summary>
-        public object OldValue
+        public object? OldValue
         {
             get; 
         }
@@ -26,14 +26,14 @@ namespace FluffySpoon.ChangeDetection
         /// <summary>
         /// The new value.
         /// </summary>
-        public object NewValue
+        public object? NewValue
         {
             get;
         }
 
         public static readonly Change Empty = new Change();
 
-        public Change(string propertyPath, object oldValue = null, object newValue = null)
+        public Change(string? propertyPath, object? oldValue = null, object? newValue = null)
         {
             PropertyPath = propertyPath;
             OldValue = oldValue;
@@ -81,7 +81,7 @@ namespace FluffySpoon.ChangeDetection
         {
             unchecked
             {
-                var hashCode = (PropertyPath != null ? PropertyPath.GetHashCode() : 0);
+                var hashCode = PropertyPath.GetHashCode();
                 hashCode = (hashCode * 397) ^ (OldValue != null ? OldValue.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ (NewValue != null ? NewValue.GetHashCode() : 0);
                 return hashCode;
