@@ -6,7 +6,7 @@ namespace FluffySpoon.ChangeDetection
 {
     public interface IChangeCollection<T> : IChangeCollection
     {
-        bool HasChangeFor(Expression<Func<T, object>> expression);
+        bool HasChangeFor(Expression<Func<T, object?>> expression);
     }
 
     public interface IChangeCollection : IReadOnlyCollection<Change>
