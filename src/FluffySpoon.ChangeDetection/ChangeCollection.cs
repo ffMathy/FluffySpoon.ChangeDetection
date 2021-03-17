@@ -9,7 +9,7 @@ namespace FluffySpoon.ChangeDetection
 {
     class ChangeCollection<T> : ChangeCollection, IChangeCollection<T>
     {
-        public bool HasChangeFor(Expression<Func<T, object>> expression)
+        public bool HasChangeFor(Expression<Func<T, object?>> expression)
         {
             return Changes.Any(x => x.Matches(expression));
         }
